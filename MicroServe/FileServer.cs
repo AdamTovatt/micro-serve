@@ -4,13 +4,13 @@ namespace MicroServe
 {
     public class FileServer
     {
-        private Dictionary<string, byte[]> loadedFiles;
+        private Dictionary<string, LoadedContent> loadedFiles;
         private string path;
 
         private FileServer(string path)
         {
             this.path = path;
-            loadedFiles = new Dictionary<string, byte[]>();
+            loadedFiles = new Dictionary<string, LoadedContent>();
         }
 
         public static FileServer CreateNew(string path)
@@ -18,7 +18,7 @@ namespace MicroServe
             FileServer server = new FileServer(path);
 
             server.LoadFiles();
-            
+
             return server;
         }
 
@@ -27,20 +27,36 @@ namespace MicroServe
             if (!Directory.Exists(path))
                 throw new Exception($"A path to a directory that does not exist was provided: {path}");
 
-            foreach(string file in Directory.GetFiles(path))
+            foreach (string file in Directory.GetFiles(path))
             {
-                loadedFiles.Add(Path.GetFileNameWithoutExtension(file), File.ReadAllBytes(file));
+                string fileName = Path.GetFileName(file);
+                string fileExtension = Path.GetExtension(file);
+                byte[] bytes = File.ReadAllBytes(file);
+
+                if (loadedFiles.ContainsKey(fileName))
+                    throw new ArgumentException($"Duplicate file names found! {file}");
+
+                loadedFiles.Add(fileName, new LoadedContent(fileName, fileExtension, bytes));
             }
         }
 
-        public async Task<IResult> GetContent(string path)
+        public async Task<IResult> GetContentAsync(string path)
         {
             await Task.CompletedTask;
 
             if (!loadedFiles.ContainsKey(path))
-                return CreateTextResult("404 not found");
+            {
+                string pathWithHtml = $"{path}.html";
 
-            return Results.File(Encoding.UTF8.GetBytes("hello world :)"), contentType: "text/plain");
+                if (!loadedFiles.ContainsKey(pathWithHtml))
+                    return CreateTextResult("404 not found");
+
+                path = pathWithHtml;
+            }
+
+            LoadedContent content = loadedFiles[path];
+
+            return Results.File(content.Bytes, contentType: content.ContentType);
         }
 
         private IResult CreateTextResult(string text)
