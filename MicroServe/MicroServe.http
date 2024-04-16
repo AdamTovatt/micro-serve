@@ -1,0 +1,11 @@
+@MicroServe_HostAddress = http://localhost:5273
+
+GET {{MicroServe_HostAddress}}/todos/
+Accept: application/json
+
+###
+
+GET {{MicroServe_HostAddress}}/todos/1
+Accept: application/json
+
+###
