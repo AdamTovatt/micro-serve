@@ -4,6 +4,8 @@ namespace MicroServe
 {
     public class FileServer
     {
+        public string NotFoundPagePath { get; set; } = "404.html";
+
         private Dictionary<string, LoadedContent> loadedFiles;
         private string path;
 
@@ -27,16 +29,30 @@ namespace MicroServe
             if (!Directory.Exists(path))
                 throw new Exception($"A path to a directory that does not exist was provided: {path}");
 
+            LoadFilesInDirectory(path);
+        }
+
+        private void LoadFilesInDirectory(string path, string? subDirectoryPath = null)
+        {
+            // first load the files
             foreach (string file in Directory.GetFiles(path))
             {
                 string fileName = Path.GetFileName(file);
                 string fileExtension = Path.GetExtension(file);
+                string relativeFilePath = subDirectoryPath == null ? fileName : $"{subDirectoryPath}/{fileName}";
                 byte[] bytes = File.ReadAllBytes(file);
 
-                if (loadedFiles.ContainsKey(fileName))
+                if (loadedFiles.ContainsKey(relativeFilePath))
                     throw new ArgumentException($"Duplicate file names found! {file}");
 
-                loadedFiles.Add(fileName, new LoadedContent(fileName, fileExtension, bytes));
+                loadedFiles.Add(relativeFilePath, new LoadedContent(fileName, fileExtension, relativeFilePath, file));
+            }
+
+            // now handle the directories
+            foreach (string directoryPath in Directory.GetDirectories(path))
+            {
+                string newSubDirectoryPath = subDirectoryPath == null ? Path.GetFileName(directoryPath) : $"{subDirectoryPath}/{Path.GetFileName(directoryPath)}";
+                LoadFilesInDirectory(directoryPath, newSubDirectoryPath);
             }
         }
 
@@ -44,19 +60,31 @@ namespace MicroServe
         {
             await Task.CompletedTask;
 
-            if (!loadedFiles.ContainsKey(path))
+            if (!loadedFiles.ContainsKey(path)) // first try to match the path as is
             {
-                string pathWithHtml = $"{path}.html";
+                string pathWithHtml = $"{path}.html"; // if not found, try to match the path with .html
 
                 if (!loadedFiles.ContainsKey(pathWithHtml))
-                    return CreateTextResult("404 not found");
+                {
+                    return await Get404PageAsync(); // if still not found, return 404
+                }
 
                 path = pathWithHtml;
             }
 
             LoadedContent content = loadedFiles[path];
 
-            return Results.File(content.Bytes, contentType: content.ContentType);
+            return await content.ToResultAsync();
+        }
+
+        private async Task<IResult> Get404PageAsync()
+        {
+            if(loadedFiles.ContainsKey(NotFoundPagePath))
+            {
+                return await loadedFiles[NotFoundPagePath].ToResultAsync();
+            }
+
+            return CreateTextResult("404 not found");
         }
 
         private IResult CreateTextResult(string text)

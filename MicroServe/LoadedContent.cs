@@ -2,9 +2,12 @@
 {
     public class LoadedContent
     {
-        public byte[] Bytes { get; set; }
         public string Name { get; set; }
         public string FileExtension { get; set; }
+        public string RelativePath { get; set; }
+        public string AbsolutePath { get; set; }
+
+        private byte[]? cachedBytes;
 
         public string ContentType
         {
@@ -27,11 +30,25 @@
             }
         }
 
-        public LoadedContent(string name, string fileExtension, byte[] bytes)
+        public LoadedContent(string name, string fileExtension, string relativePath, string absolutePath)
         {
             Name = name;
-            Bytes = bytes;
+            RelativePath = relativePath;
             FileExtension = fileExtension;
+            AbsolutePath = absolutePath;
+        }
+
+        public async Task<byte[]> GetBytes()
+        {
+            if (cachedBytes != null)
+                return cachedBytes;
+
+            return cachedBytes = await File.ReadAllBytesAsync(AbsolutePath);
+        }
+
+        public async Task<IResult> ToResultAsync()
+        {
+            return Results.File(await GetBytes(), contentType: ContentType);
         }
     }
 }
