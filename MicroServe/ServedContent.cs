@@ -1,6 +1,8 @@
-﻿namespace MicroServe
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+
+namespace MicroServe
 {
-    public class LoadedContent
+    public class ServedContent
     {
         public string Name { get; set; }
         public string FileExtension { get; set; }
@@ -30,7 +32,7 @@
             }
         }
 
-        public LoadedContent(string name, string fileExtension, string relativePath, string absolutePath)
+        public ServedContent(string name, string fileExtension, string relativePath, string absolutePath)
         {
             Name = name;
             RelativePath = relativePath;
