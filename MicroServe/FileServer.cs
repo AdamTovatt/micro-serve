@@ -6,13 +6,13 @@ namespace MicroServe
     {
         public string NotFoundPagePath { get; set; } = "404.html";
 
-        private Dictionary<string, ServedContent> servedFiles;
+        private Dictionary<string, ServedContent> servedContents;
         private string path;
 
         private FileServer(string path)
         {
             this.path = path;
-            servedFiles = new Dictionary<string, ServedContent>();
+            servedContents = new Dictionary<string, ServedContent>();
         }
 
         public static FileServer CreateNew(string path)
@@ -42,10 +42,10 @@ namespace MicroServe
                 string relativeFilePath = subDirectoryPath == null ? fileName : $"{subDirectoryPath}/{fileName}";
                 byte[] bytes = File.ReadAllBytes(file);
 
-                if (servedFiles.ContainsKey(relativeFilePath))
+                if (servedContents.ContainsKey(relativeFilePath))
                     throw new ArgumentException($"Duplicate file names found! {file}");
 
-                servedFiles.Add(relativeFilePath, new ServedContent(fileName, fileExtension, relativeFilePath, file));
+                servedContents.Add(relativeFilePath, new ServedContent(fileName, fileExtension, relativeFilePath, file));
             }
 
             // now handle the directories
@@ -58,14 +58,13 @@ namespace MicroServe
 
         public async Task<IResult> GetContentAsync(string? path)
         {
-            if(path == null)
-                path = "index.html";
+            path ??= "index.html";
 
-            if (!servedFiles.ContainsKey(path)) // first try to match the path as is
+            if (!servedContents.ContainsKey(path)) // first try to match the path as is
             {
                 string pathWithHtml = $"{path}.html"; // if not found, try to match the path with .html
 
-                if (!servedFiles.ContainsKey(pathWithHtml))
+                if (!servedContents.ContainsKey(pathWithHtml))
                 {
                     return await Get404PageAsync(); // if still not found, return 404
                 }
@@ -73,15 +72,15 @@ namespace MicroServe
                 path = pathWithHtml;
             }
 
-            ServedContent content = servedFiles[path];
+            ServedContent content = servedContents[path];
 
             return await content.ToResultAsync();
         }
 
         private async Task<IResult> Get404PageAsync()
         {
-            if(servedFiles.ContainsKey(NotFoundPagePath))
-                return await servedFiles[NotFoundPagePath].ToResultAsync();
+            if (servedContents.TryGetValue(NotFoundPagePath, out ServedContent? servedContent))
+                return await servedContent.ToResultAsync();
 
             return CreateTextResult("404 not found");
         }
