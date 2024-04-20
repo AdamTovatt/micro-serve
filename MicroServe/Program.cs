@@ -15,8 +15,9 @@ namespace MicroServe
 
             WebApplication app = builder.Build();
 
-            RouteGroupBuilder todosApi = app.MapGroup("/");
+            RouteGroupBuilder todosApi = app.MapGroup("");
             todosApi.MapGet("/{*path}", async (string? path) => await fileServer.GetContentAsync(path));
+            todosApi.MapGet("/", async () => await fileServer.GetContentAsync(null));
 
             app.Run();
         }

@@ -4,7 +4,7 @@
       "commandName": "Project",
       "commandLineArgs": "c:\\users\\adam\\desktop\\webpage",
       "launchBrowser": true,
-      "launchUrl": "todos",
+      "launchUrl": "",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
