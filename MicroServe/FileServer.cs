@@ -56,7 +56,7 @@ namespace MicroServe
             }
         }
 
-        public async Task<IResult> GetContentAsync(string? path)
+        public async Task<IResult> GetContentAsync(string? path, HttpRequest request)
         {
             path ??= "index.html";
 
