@@ -127,7 +127,7 @@ namespace MicroServe
 
                 if (!servedContents.ContainsKey(pathWithHtml))
                 {
-                    return await Get404PageAsync(); // if still not found, return 404
+                    return await Get404PageAsync(path); // if still not found, return 404
                 }
 
                 path = pathWithHtml;
@@ -138,12 +138,12 @@ namespace MicroServe
             return await content.ToResultAsync();
         }
 
-        private async Task<IResult> Get404PageAsync()
+        private async Task<IResult> Get404PageAsync(string path)
         {
             if (servedContents.TryGetValue(Options.NotFoundPagePath, out ServedContent? servedContent))
                 return await servedContent.ToResultAsync();
 
-            return CreateTextResult("404 not found");
+            return CreateTextResult("404 not found for path: " + path);
         }
 
         private IResult CreateTextResult(string text)
