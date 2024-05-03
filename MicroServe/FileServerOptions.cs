@@ -24,6 +24,12 @@ namespace MicroServe
         public bool PrefixPathWithHost { get; set; } = true;
 
         /// <summary>
+        /// Will redirect the provided host to the provided redirect.
+        /// </summary>
+        [JsonPropertyName("hostRedirects")]
+        public Dictionary<string, string> HostRedirects { get; set; } = new Dictionary<string, string>();
+
+        /// <summary>
         /// Will try to load an options object from a path, returning null if the file does not exist.
         /// </summary>
         /// <param name="path">The path to load from.</param>
@@ -58,6 +64,14 @@ namespace MicroServe
         private string ToJson()
         {
             return JsonSerializer.Serialize(this);
+        }
+
+        public string RedirectHost(string host)
+        {
+            if (HostRedirects.ContainsKey(host))
+                return HostRedirects[host];
+
+            return host;
         }
     }
 }

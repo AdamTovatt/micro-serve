@@ -109,7 +109,7 @@ namespace MicroServe
 
         public async Task<IResult> GetResponseAsync(string? path, HttpRequest request)
         {
-            return await GetContentAsync(path, RefineHostString(request.Host.Value));
+            return await GetContentAsync(path, Options.RedirectHost(RefineHostString(request.Host.Value)));
         }
 
         public async Task<IResult> GetContentAsync(string? path, string? host = null)
