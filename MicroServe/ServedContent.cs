@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
-
-namespace MicroServe
+﻿namespace MicroServe
 {
     public class ServedContent
     {
@@ -10,6 +8,7 @@ namespace MicroServe
         public string AbsolutePath { get; set; }
 
         private byte[]? cachedBytes;
+        private FileServer owningServer;
 
         public string ContentType
         {
@@ -32,12 +31,13 @@ namespace MicroServe
             }
         }
 
-        public ServedContent(string name, string fileExtension, string relativePath, string absolutePath)
+        public ServedContent(string name, string fileExtension, string relativePath, string absolutePath, FileServer owningServer)
         {
             Name = name;
             RelativePath = relativePath;
             FileExtension = fileExtension;
             AbsolutePath = absolutePath;
+            this.owningServer = owningServer;
         }
 
         public async Task<byte[]> GetBytes()
@@ -45,7 +45,12 @@ namespace MicroServe
             if (cachedBytes != null)
                 return cachedBytes;
 
-            return cachedBytes = await File.ReadAllBytesAsync(AbsolutePath);
+            byte[] bytes = await File.ReadAllBytesAsync(AbsolutePath);
+            
+            if(bytes.Length < owningServer.Options.MaxCachedFileSize)
+                cachedBytes = bytes;
+
+            return bytes;
         }
 
         public async Task<IResult> ToResultAsync()

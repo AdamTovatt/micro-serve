@@ -2,9 +2,14 @@
 
 namespace MicroServe
 {
+    /// <summary>
+    /// Used to serve files from a directory.
+    /// </summary>
     public class FileServer
     {
-        public string NotFoundPagePath { get; set; } = "404.html";
+        private const string optionsFileName = "file-server-config.json";
+
+        public FileServerOptions Options { get; set; }
 
         private Dictionary<string, ServedContent> servedContents;
         private string path;
@@ -13,8 +18,15 @@ namespace MicroServe
         {
             this.path = path;
             servedContents = new Dictionary<string, ServedContent>();
+
+            Options = GetInitializedOptions();
         }
 
+        /// <summary>
+        /// Will create a new file server with the provided path as the root directory to serve files from.
+        /// </summary>
+        /// <param name="path">The path where the files to serve are.</param>
+        /// <returns></returns>
         public static FileServer CreateNew(string path)
         {
             FileServer server = new FileServer(path);
@@ -24,10 +36,48 @@ namespace MicroServe
             return server;
         }
 
+        /// <summary>
+        /// Will map the requests from the provided web application to be handled by this file server.
+        /// </summary>
+        /// <param name="webApplication"></param>
+        public void MapRequestSource(WebApplication webApplication)
+        {
+            RouteGroupBuilder api = webApplication.MapGroup("");
+            api.MapGet("/{*path}", async (string? path, HttpRequest request) => await GetResponseAsync(path, request));
+        }
+
+        public void InitializeOptions(string? path)
+        {
+            Options = GetInitializedOptions(path);
+        }
+
+        public FileServerOptions GetInitializedOptions(string? path = null)
+        {
+            if (path == null)
+                path = optionsFileName;
+
+            FileServerOptions? options = FileServerOptions.FromPath(path);
+
+            if (options == null)
+            {
+                options = new FileServerOptions();
+                options.ToPath(path);
+            }
+
+            return options;
+        }
+
+        /// <summary>
+        /// Will initialize the content in the path that the file server is serving from.
+        /// </summary>
+        /// <exception cref="Exception"></exception>
         public void InitializeServedContent()
         {
             if (!Directory.Exists(path))
                 throw new Exception($"A path to a directory that does not exist was provided: {path}");
+
+            if(servedContents.Count != 0)
+                servedContents.Clear();
 
             InitializeServedContentInDirectory(path);
         }
@@ -45,7 +95,7 @@ namespace MicroServe
                 if (servedContents.ContainsKey(relativeFilePath))
                     throw new ArgumentException($"Duplicate file names found! {file}");
 
-                servedContents.Add(relativeFilePath, new ServedContent(fileName, fileExtension, relativeFilePath, file));
+                servedContents.Add(relativeFilePath, new ServedContent(fileName, fileExtension, relativeFilePath, file, this));
             }
 
             // now handle the directories
@@ -56,7 +106,12 @@ namespace MicroServe
             }
         }
 
-        public async Task<IResult> GetContentAsync(string? path, HttpRequest request)
+        public async Task<IResult> GetResponseAsync(string? path, HttpRequest request)
+        {
+            return await GetContentAsync(path, request.Host.Value);
+        }
+
+        public async Task<IResult> GetContentAsync(string? path, string? host = null)
         {
             path ??= "index.html";
 
@@ -72,6 +127,11 @@ namespace MicroServe
                 path = pathWithHtml;
             }
 
+            if (Options.PrefixPathWithHost && host != null) // prefix the path with the host (if enabled)
+            {
+                path = $"{host}/{path}";
+            }
+
             ServedContent content = servedContents[path];
 
             return await content.ToResultAsync();
@@ -79,7 +139,7 @@ namespace MicroServe
 
         private async Task<IResult> Get404PageAsync()
         {
-            if (servedContents.TryGetValue(NotFoundPagePath, out ServedContent? servedContent))
+            if (servedContents.TryGetValue(Options.NotFoundPagePath, out ServedContent? servedContent))
                 return await servedContent.ToResultAsync();
 
             return CreateTextResult("404 not found");
