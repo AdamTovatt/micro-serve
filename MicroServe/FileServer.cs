@@ -51,17 +51,18 @@ namespace MicroServe
             Options = GetInitializedOptions(path);
         }
 
-        public FileServerOptions GetInitializedOptions(string? path = null)
+        public FileServerOptions GetInitializedOptions(string? fileName = null)
         {
-            if (path == null)
-                path = optionsFileName;
+            if (fileName == null)
+                fileName = optionsFileName;
 
-            FileServerOptions? options = FileServerOptions.FromPath(path);
+            string pathToUse = $"{path}/{fileName}";
+            FileServerOptions? options = FileServerOptions.FromPath(pathToUse);
 
             if (options == null)
             {
                 options = new FileServerOptions();
-                options.ToPath(path);
+                options.ToPath(pathToUse);
             }
 
             return options;
@@ -108,12 +109,17 @@ namespace MicroServe
 
         public async Task<IResult> GetResponseAsync(string? path, HttpRequest request)
         {
-            return await GetContentAsync(path, request.Host.Value);
+            return await GetContentAsync(path, RefineHostString(request.Host.Value));
         }
 
         public async Task<IResult> GetContentAsync(string? path, string? host = null)
         {
             path ??= "index.html";
+
+            if (Options.PrefixPathWithHost && host != null) // prefix the path with the host (if enabled)
+            {
+                path = $"{host}/{path}";
+            }
 
             if (!servedContents.ContainsKey(path)) // first try to match the path as is
             {
@@ -125,11 +131,6 @@ namespace MicroServe
                 }
 
                 path = pathWithHtml;
-            }
-
-            if (Options.PrefixPathWithHost && host != null) // prefix the path with the host (if enabled)
-            {
-                path = $"{host}/{path}";
             }
 
             ServedContent content = servedContents[path];
@@ -148,6 +149,14 @@ namespace MicroServe
         private IResult CreateTextResult(string text)
         {
             return Results.File(Encoding.UTF8.GetBytes(text), contentType: "text/plain");
+        }
+
+        private string RefineHostString(string hostString)
+        { 
+            if(string.IsNullOrEmpty(hostString))
+                return hostString;
+
+            return hostString.Replace(":", "").Replace(".", "");
         }
     }
 }

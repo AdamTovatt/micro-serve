@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MicroServe
 {
@@ -7,16 +8,19 @@ namespace MicroServe
         /// <summary>
         /// The path to the file that will be served when a file is not found.
         /// </summary>
+        [JsonPropertyName("notFoundPagePath")]
         public string NotFoundPagePath { get; set; } = "404.html";
 
         /// <summary>
         /// The maximum size of a file that will be cached in memory.
         /// </summary>
+        [JsonPropertyName("maxCachedFileSize")]
         public int MaxCachedFileSize { get; set; } = 1024 * 5;
 
         /// <summary>
         /// If the path should be prefixed with the host name. Should be true if multiple sites are being served from the same server.
         /// </summary>
+        [JsonPropertyName("prefixPathWithHost")]
         public bool PrefixPathWithHost { get; set; } = true;
 
         /// <summary>
